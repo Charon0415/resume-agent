@@ -1,0 +1,1177 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 简历岗位匹配 Agent</title>
+  <style>
+    :root {
+      --bg: #f6f7f4;
+      --surface: #ffffff;
+      --ink: #172023;
+      --muted: #667176;
+      --line: #d9dfd7;
+      --soft: #edf2ee;
+      --teal: #0f766e;
+      --teal-dark: #115e59;
+      --blue: #2563eb;
+      --amber: #b45309;
+      --red: #b42318;
+      --green: #047857;
+      --shadow: 0 18px 50px rgba(23, 32, 35, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    button,
+    textarea,
+    input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app-shell {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 22px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      display: grid;
+      gap: 2px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 23px;
+      font-weight: 750;
+    }
+
+    .brand p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--ink);
+      padding: 8px 13px;
+      transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: #a9b7b1;
+      background: #fbfcfb;
+    }
+
+    .btn.primary {
+      border-color: var(--teal);
+      background: var(--teal);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .btn.primary:hover {
+      background: var(--teal-dark);
+    }
+
+    .btn.danger {
+      color: var(--red);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(360px, 0.95fr) minmax(420px, 1.25fr);
+      gap: 18px;
+      margin-top: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 54px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfb;
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 750;
+    }
+
+    .panel-body {
+      padding: 16px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    label {
+      color: #354044;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input {
+      height: 40px;
+      padding: 8px 10px;
+    }
+
+    textarea {
+      min-height: 248px;
+      resize: vertical;
+      padding: 11px 12px;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.13);
+    }
+
+    .input-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .status-line {
+      min-height: 22px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status-line.error {
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .score-grid {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 18px;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .score-ring {
+      --score: 0%;
+      width: 136px;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at center, var(--surface) 0 58%, transparent 59%),
+        conic-gradient(var(--teal) var(--score), #e2e8e4 0);
+      border: 1px solid #d5ddd8;
+    }
+
+    .score-ring strong {
+      font-size: 34px;
+      line-height: 1;
+    }
+
+    .score-ring span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .score-copy h3 {
+      margin: 0 0 8px;
+      font-size: 19px;
+    }
+
+    .score-copy p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .metric {
+      min-height: 84px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfb;
+    }
+
+    .metric b {
+      display: block;
+      font-size: 22px;
+      line-height: 1.1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 12px 16px 0;
+      border-top: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .tab {
+      border: 1px solid var(--line);
+      border-radius: 7px 7px 0 0;
+      border-bottom-color: transparent;
+      background: #f7f9f7;
+      padding: 8px 12px;
+      color: #435056;
+      font-weight: 700;
+    }
+
+    .tab.active {
+      background: var(--surface);
+      color: var(--teal-dark);
+      border-color: #aebdb6;
+      border-bottom-color: var(--surface);
+    }
+
+    .tab-panel {
+      display: none;
+      padding: 16px;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .agent-flow {
+      display: grid;
+      gap: 10px;
+    }
+
+    .agent-step {
+      display: grid;
+      grid-template-columns: 132px 1fr;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfb;
+    }
+
+    .agent-step b {
+      color: var(--teal-dark);
+    }
+
+    .agent-step p {
+      margin: 0;
+      color: #475357;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 0 0 10px;
+      font-size: 15px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 32px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      max-width: 100%;
+      min-height: 30px;
+      padding: 5px 9px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: #29363a;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .chip.covered {
+      border-color: rgba(4, 120, 87, 0.35);
+      background: rgba(4, 120, 87, 0.08);
+      color: var(--green);
+    }
+
+    .chip.missing {
+      border-color: rgba(180, 83, 9, 0.35);
+      background: rgba(180, 83, 9, 0.09);
+      color: var(--amber);
+    }
+
+    .chip.neutral {
+      background: #f8faf9;
+      color: var(--muted);
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .block {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px;
+      background: #fbfcfb;
+    }
+
+    .block + .block {
+      margin-top: 12px;
+    }
+
+    .block h4 {
+      margin: 0 0 9px;
+      font-size: 14px;
+    }
+
+    .list {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .list li {
+      margin: 7px 0;
+    }
+
+    .snippet {
+      white-space: pre-wrap;
+      min-height: 104px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: #283438;
+    }
+
+    .history-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .history-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfb;
+    }
+
+    .history-item strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .history-item span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .empty {
+      color: var(--muted);
+      padding: 12px;
+      border: 1px dashed #c8d0ca;
+      border-radius: 8px;
+      background: #fbfcfb;
+    }
+
+    @media (max-width: 1080px) {
+      .layout,
+      .input-columns,
+      .score-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .score-ring {
+        margin: 0 auto;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app-shell {
+        padding: 12px;
+      }
+
+      .topbar,
+      .panel-head {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .toolbar {
+        justify-content: stretch;
+      }
+
+      .btn {
+        flex: 1 1 136px;
+      }
+
+      .form-grid,
+      .metrics,
+      .split,
+      .agent-step {
+        grid-template-columns: 1fr;
+      }
+
+      textarea {
+        min-height: 210px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <h1>AI 简历岗位匹配 Agent</h1>
+        <p>浏览器端分析工具 · 无后端 · 本地保存</p>
+      </div>
+      <div class="toolbar">
+        <button class="btn" id="sampleBtn" type="button">填入示例</button>
+        <button class="btn" id="exportBtn" type="button">导出报告</button>
+        <button class="btn danger" id="clearBtn" type="button">清空</button>
+        <button class="btn primary" id="analyzeBtn" type="button">分析匹配</button>
+      </div>
+    </header>
+
+    <section class="layout">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>输入区</h2>
+        </div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="field">
+              <label for="candidateName">姓名</label>
+              <input id="candidateName" type="text" placeholder="例如：张同学">
+            </div>
+            <div class="field">
+              <label for="targetRole">目标岗位</label>
+              <input id="targetRole" type="text" placeholder="例如：前端开发实习生">
+            </div>
+          </div>
+
+          <div class="input-columns">
+            <div class="field">
+              <label for="resumeText">简历内容</label>
+              <textarea id="resumeText" placeholder="粘贴教育背景、技能、项目经历、实习经历等内容"></textarea>
+            </div>
+            <div class="field">
+              <label for="jdText">岗位 JD</label>
+              <textarea id="jdText" placeholder="粘贴岗位职责、任职要求、加分项等内容"></textarea>
+            </div>
+          </div>
+          <div class="status-line" id="statusLine">等待输入。</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>分析结果</h2>
+        </div>
+        <div class="panel-body" id="summaryPanel">
+          <div class="score-grid">
+            <div class="score-ring" id="scoreRing" style="--score: 0%">
+              <div>
+                <strong id="scoreText">0</strong>
+                <span>匹配度</span>
+              </div>
+            </div>
+            <div class="score-copy">
+              <h3 id="scoreTitle">还没有生成分析</h3>
+              <p id="scoreDesc">填写简历和岗位 JD 后，点击“分析匹配”。</p>
+            </div>
+          </div>
+
+          <div class="metrics">
+            <div class="metric">
+              <b id="coverageText">0%</b>
+              <span>关键词覆盖率</span>
+            </div>
+            <div class="metric">
+              <b id="missingText">0</b>
+              <span>待补关键词</span>
+            </div>
+            <div class="metric">
+              <b id="metricText">0</b>
+              <span>量化表达</span>
+            </div>
+            <div class="metric">
+              <b id="actionText">0</b>
+              <span>行动表达</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="结果视图">
+          <button class="tab active" type="button" data-tab="flow">Agent 轨迹</button>
+          <button class="tab" type="button" data-tab="keywords">关键词</button>
+          <button class="tab" type="button" data-tab="advice">优化建议</button>
+          <button class="tab" type="button" data-tab="interview">面试准备</button>
+          <button class="tab" type="button" data-tab="history">历史</button>
+        </div>
+
+        <section class="tab-panel active" id="flowPanel"></section>
+        <section class="tab-panel" id="keywordsPanel"></section>
+        <section class="tab-panel" id="advicePanel"></section>
+        <section class="tab-panel" id="interviewPanel"></section>
+        <section class="tab-panel" id="historyPanel"></section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const catalog = [
+      {
+        group: "前端",
+        terms: ["HTML", "CSS", "JavaScript", "TypeScript", "React", "Vue", "Next.js", "Nuxt", "Vite", "Webpack", "小程序", "UniApp", "Tailwind", "Sass", "Less", "ECharts", "Canvas", "Three.js", "响应式", "组件化", "性能优化", "可视化", "跨端"]
+      },
+      {
+        group: "后端",
+        terms: ["Java", "Spring", "Spring Boot", "Node.js", "Express", "NestJS", "Python", "Django", "FastAPI", "Golang", "MySQL", "PostgreSQL", "Redis", "MongoDB", "REST", "GraphQL", "微服务", "Docker", "Kubernetes", "Linux", "Nginx", "Kafka", "RabbitMQ", "消息队列"]
+      },
+      {
+        group: "AI / 数据",
+        terms: ["Python", "Pandas", "NumPy", "Scikit-learn", "PyTorch", "TensorFlow", "LangChain", "RAG", "Agent", "NLP", "LLM", "大模型", "机器学习", "深度学习", "知识库", "向量数据库", "数据分析", "数据挖掘", "Prompt", "提示词", "OCR"]
+      },
+      {
+        group: "测试 / 工程",
+        terms: ["Git", "CI/CD", "单元测试", "自动化测试", "Playwright", "Jest", "Vitest", "代码规范", "性能监控", "日志", "灰度发布", "需求评审", "接口联调", "缺陷定位"]
+      },
+      {
+        group: "产品 / 设计",
+        terms: ["Figma", "Axure", "PRD", "原型", "用户调研", "需求分析", "流程图", "竞品分析", "数据看板", "用户增长", "A/B Test", "转化率", "留存"]
+      },
+      {
+        group: "通用能力",
+        terms: ["沟通", "协作", "文档", "项目管理", "敏捷", "跨部门", "自驱", "学习能力", "问题定位", "复盘", "推进", "交付"]
+      }
+    ];
+
+    const actionWords = ["负责", "主导", "设计", "开发", "搭建", "优化", "实现", "推进", "协作", "上线", "交付", "复盘", "分析", "定位", "改造", "沉淀", "提升", "降低", "减少", "自动化"];
+    const sectionWords = ["教育经历", "项目经历", "实习经历", "工作经历", "技能", "荣誉", "校园经历", "自我评价"];
+    const storageKey = "resume-agent-state-v1";
+    const historyKey = "resume-agent-history-v1";
+
+    const els = {
+      candidateName: document.querySelector("#candidateName"),
+      targetRole: document.querySelector("#targetRole"),
+      resumeText: document.querySelector("#resumeText"),
+      jdText: document.querySelector("#jdText"),
+      statusLine: document.querySelector("#statusLine"),
+      analyzeBtn: document.querySelector("#analyzeBtn"),
+      sampleBtn: document.querySelector("#sampleBtn"),
+      clearBtn: document.querySelector("#clearBtn"),
+      exportBtn: document.querySelector("#exportBtn"),
+      scoreRing: document.querySelector("#scoreRing"),
+      scoreText: document.querySelector("#scoreText"),
+      scoreTitle: document.querySelector("#scoreTitle"),
+      scoreDesc: document.querySelector("#scoreDesc"),
+      coverageText: document.querySelector("#coverageText"),
+      missingText: document.querySelector("#missingText"),
+      metricText: document.querySelector("#metricText"),
+      actionText: document.querySelector("#actionText"),
+      flowPanel: document.querySelector("#flowPanel"),
+      keywordsPanel: document.querySelector("#keywordsPanel"),
+      advicePanel: document.querySelector("#advicePanel"),
+      interviewPanel: document.querySelector("#interviewPanel"),
+      historyPanel: document.querySelector("#historyPanel")
+    };
+
+    let currentReport = null;
+
+    function compact(text) {
+      return String(text || "")
+        .toLowerCase()
+        .replace(/\s+/g, "")
+        .replace(/（/g, "(")
+        .replace(/）/g, ")");
+    }
+
+    function escapeHtml(text) {
+      return String(text || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function uniqueByTerm(items) {
+      const seen = new Map();
+      items.forEach((item) => {
+        const key = compact(item.term);
+        if (!seen.has(key)) {
+          seen.set(key, item);
+        }
+      });
+      return Array.from(seen.values());
+    }
+
+    function extractTerms(text) {
+      const source = compact(text);
+      const found = [];
+      catalog.forEach((group) => {
+        group.terms.forEach((term) => {
+          if (source.includes(compact(term))) {
+            found.push({ term, group: group.group });
+          }
+        });
+      });
+      return uniqueByTerm(found);
+    }
+
+    function countHits(text, words) {
+      const source = String(text || "");
+      return words.reduce((count, word) => count + (source.includes(word) ? 1 : 0), 0);
+    }
+
+    function countMetrics(text) {
+      const matches = String(text || "").match(/\d+(\.\d+)?\s*(%|w|W|万|k|K|人|天|小时|分钟|次|倍|元|ms|s|年|个月|条|份|分)/g);
+      return matches ? matches.length : 0;
+    }
+
+    function makeChips(items, className) {
+      if (!items.length) {
+        return '<span class="chip neutral">暂无</span>';
+      }
+      return items.map((item) => `<span class="chip ${className}">${escapeHtml(item.term)}</span>`).join("");
+    }
+
+    function groupTerms(items) {
+      return items.reduce((acc, item) => {
+        acc[item.group] = acc[item.group] || [];
+        acc[item.group].push(item);
+        return acc;
+      }, {});
+    }
+
+    function pct(value) {
+      return Math.round(value * 100);
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function getFormData() {
+      return {
+        candidateName: els.candidateName.value.trim(),
+        targetRole: els.targetRole.value.trim(),
+        resumeText: els.resumeText.value.trim(),
+        jdText: els.jdText.value.trim()
+      };
+    }
+
+    function analyze() {
+      const data = getFormData();
+      if (data.resumeText.length < 40 || data.jdText.length < 40) {
+        els.statusLine.textContent = "简历和 JD 内容都需要更完整一些。";
+        els.statusLine.classList.add("error");
+        return;
+      }
+
+      els.statusLine.classList.remove("error");
+
+      const resumeTerms = extractTerms(data.resumeText);
+      const jdTerms = extractTerms(data.jdText);
+      const resumeMap = new Set(resumeTerms.map((item) => compact(item.term)));
+      const covered = jdTerms.filter((item) => resumeMap.has(compact(item.term)));
+      const missing = jdTerms.filter((item) => !resumeMap.has(compact(item.term)));
+      const coverage = jdTerms.length ? covered.length / jdTerms.length : 0;
+      const metricCount = countMetrics(data.resumeText);
+      const actionCount = countHits(data.resumeText, actionWords);
+      const sectionCount = countHits(data.resumeText, sectionWords);
+      const lengthScore = clamp(data.resumeText.length / 900, 0, 1);
+      const evidenceScore = clamp((metricCount * 12 + actionCount * 5 + sectionCount * 6) / 100, 0, 1);
+      const structureScore = clamp((sectionCount * 0.16) + (lengthScore * 0.45), 0, 1);
+      const score = Math.round((coverage * 62) + (evidenceScore * 25) + (structureScore * 13));
+      const level = getScoreLevel(score);
+      const suggestions = buildSuggestions({ data, covered, missing, metricCount, actionCount, sectionCount, score });
+      const snippets = buildSnippets({ data, covered, missing });
+      const questions = buildQuestions({ covered, missing, targetRole: data.targetRole });
+      const flow = buildFlow({ data, jdTerms, resumeTerms, covered, missing, metricCount, actionCount, score });
+
+      currentReport = {
+        id: Date.now(),
+        createdAt: new Date().toLocaleString("zh-CN"),
+        ...data,
+        jdTerms,
+        resumeTerms,
+        covered,
+        missing,
+        coverage,
+        metricCount,
+        actionCount,
+        sectionCount,
+        score,
+        level,
+        suggestions,
+        snippets,
+        questions,
+        flow
+      };
+
+      renderReport(currentReport);
+      saveDraft();
+      saveHistory(currentReport);
+      els.statusLine.textContent = `已生成 ${data.candidateName || "当前简历"} 与 ${data.targetRole || "目标岗位"} 的匹配报告。`;
+    }
+
+    function getScoreLevel(score) {
+      if (score >= 85) {
+        return { title: "高度匹配", desc: "简历与岗位要求已经比较接近，重点放在证据增强和表达压缩。", tone: "high" };
+      }
+      if (score >= 70) {
+        return { title: "较匹配", desc: "核心方向基本一致，补齐缺失关键词和成果数据后会更稳。", tone: "good" };
+      }
+      if (score >= 50) {
+        return { title: "需要定向优化", desc: "岗位关键词有一定缺口，建议优先改项目描述和技能区。", tone: "mid" };
+      }
+      return { title: "匹配度偏低", desc: "当前简历与 JD 的交集较少，需要重新选择经历或调整目标岗位。", tone: "low" };
+    }
+
+    function buildSuggestions(ctx) {
+      const suggestions = [];
+      const missingTop = ctx.missing.slice(0, 6).map((item) => item.term).join("、");
+      const coveredTop = ctx.covered.slice(0, 5).map((item) => item.term).join("、");
+
+      if (ctx.missing.length) {
+        suggestions.push(`补齐岗位高频词：${missingTop}。如果确实掌握，把它们放进技能区；如果只在项目中用过，写进对应项目的技术栈和职责。`);
+      }
+      if (ctx.metricCount < 3) {
+        suggestions.push("增加量化结果：把“提升效率”“优化体验”改成“耗时减少 30%”“页面首屏缩短 400ms”“支持 1,000+ 条数据筛选”。");
+      }
+      if (ctx.actionCount < 6) {
+        suggestions.push("强化动作表达：每段经历尽量用“负责、设计、开发、优化、上线、复盘”等动词开头。");
+      }
+      if (ctx.sectionCount < 4) {
+        suggestions.push("补齐结构模块：建议包含教育经历、技能栈、项目经历、实习经历或校园经历，让筛选者更容易定位信息。");
+      }
+      if (ctx.covered.length) {
+        suggestions.push(`把已覆盖优势前置：${coveredTop} 可以放到简历开头的技能摘要或项目亮点中。`);
+      }
+      if (ctx.score >= 85) {
+        suggestions.push("当前匹配度较高，下一步可以针对公司业务补一段项目背景，让经历与真实岗位场景更贴合。");
+      }
+      return suggestions;
+    }
+
+    function buildSnippets(ctx) {
+      const role = ctx.data.targetRole || "目标岗位";
+      const primary = ctx.covered[0]?.term || ctx.missing[0]?.term || "核心技术";
+      const secondary = ctx.covered[1]?.term || ctx.missing[1]?.term || "业务需求";
+      const missingText = ctx.missing.slice(0, 3).map((item) => item.term).join("、") || "岗位关键能力";
+      return [
+        `项目经历：围绕 ${role} 要求，基于 ${primary} 和 ${secondary} 完成核心模块开发，负责需求拆解、方案设计、功能实现与问题定位，并通过数据指标复盘优化效果。`,
+        `技能摘要：熟悉 ${ctx.covered.slice(0, 6).map((item) => item.term).join("、") || "岗位相关技术"}，具备从需求分析到交付落地的完整项目经验。`,
+        `补充方向：建议在简历中加入 ${missingText} 的学习或实践证据，例如课程项目、开源练习、比赛作品或可量化的 Demo 成果。`
+      ];
+    }
+
+    function buildQuestions(ctx) {
+      const skills = uniqueByTerm([...ctx.covered.slice(0, 4), ...ctx.missing.slice(0, 4)]).slice(0, 6);
+      const base = skills.map((item) => `你在项目中如何使用 ${item.term} 解决一个具体问题？请说明背景、方案、结果和复盘。`);
+      base.push(`如果面试官要求你现场优化一个 ${ctx.targetRole || "目标岗位"} 相关功能，你会先看哪些指标？`);
+      base.push("简历中最能证明你岗位匹配度的项目是哪一个？为什么？");
+      base.push("遇到需求变化或接口联调问题时，你通常如何推进？");
+      return base.slice(0, 8);
+    }
+
+    function buildFlow(ctx) {
+      const target = ctx.data.targetRole || "目标岗位";
+      const jdTop = ctx.jdTerms.slice(0, 8).map((item) => item.term).join("、") || "未识别到明显技术词";
+      const resumeTop = ctx.resumeTerms.slice(0, 8).map((item) => item.term).join("、") || "未识别到明显技术词";
+      return [
+        { agent: "需求解析 Agent", text: `从 ${target} JD 中识别出 ${ctx.jdTerms.length} 个岗位关键词，核心集中在 ${jdTop}。` },
+        { agent: "技能匹配 Agent", text: `从简历中识别出 ${ctx.resumeTerms.length} 个能力关键词，当前显性能力包括 ${resumeTop}。` },
+        { agent: "差距分析 Agent", text: `已覆盖 ${ctx.covered.length} 个关键词，待补 ${ctx.missing.length} 个关键词，关键词覆盖率为 ${pct(ctx.covered.length / Math.max(ctx.jdTerms.length, 1))}%。` },
+        { agent: "证据审核 Agent", text: `检测到 ${ctx.metricCount} 处量化表达和 ${ctx.actionCount} 类行动表达，用于判断经历可信度和结果强度。` },
+        { agent: "文案优化 Agent", text: `综合评分为 ${ctx.score} 分，已生成定向优化建议、可替换项目描述和面试准备题。` }
+      ];
+    }
+
+    function renderReport(report) {
+      els.scoreRing.style.setProperty("--score", `${report.score}%`);
+      els.scoreText.textContent = report.score;
+      els.scoreTitle.textContent = report.level.title;
+      els.scoreDesc.textContent = report.level.desc;
+      els.coverageText.textContent = `${pct(report.coverage)}%`;
+      els.missingText.textContent = report.missing.length;
+      els.metricText.textContent = report.metricCount;
+      els.actionText.textContent = report.actionCount;
+      renderFlow(report);
+      renderKeywords(report);
+      renderAdvice(report);
+      renderInterview(report);
+      renderHistory();
+    }
+
+    function renderFlow(report) {
+      els.flowPanel.innerHTML = `
+        <div class="agent-flow">
+          ${report.flow.map((step) => `
+            <div class="agent-step">
+              <b>${escapeHtml(step.agent)}</b>
+              <p>${escapeHtml(step.text)}</p>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderKeywords(report) {
+      const groups = groupTerms(report.jdTerms);
+      const groupHtml = Object.keys(groups).map((group) => {
+        const coveredSet = new Set(report.covered.map((item) => compact(item.term)));
+        const chips = groups[group].map((item) => {
+          const className = coveredSet.has(compact(item.term)) ? "covered" : "missing";
+          return `<span class="chip ${className}">${escapeHtml(item.term)}</span>`;
+        }).join("");
+        return `
+          <div class="block">
+            <h4>${escapeHtml(group)}</h4>
+            <div class="chips">${chips}</div>
+          </div>
+        `;
+      }).join("");
+
+      els.keywordsPanel.innerHTML = `
+        <div class="split">
+          <div>
+            <h3 class="section-title">已覆盖</h3>
+            <div class="chips">${makeChips(report.covered, "covered")}</div>
+          </div>
+          <div>
+            <h3 class="section-title">待补充</h3>
+            <div class="chips">${makeChips(report.missing, "missing")}</div>
+          </div>
+        </div>
+        ${groupHtml || '<div class="empty">未从 JD 中识别到可匹配关键词。</div>'}
+      `;
+    }
+
+    function renderAdvice(report) {
+      els.advicePanel.innerHTML = `
+        <div class="block">
+          <h4>优化动作</h4>
+          <ol class="list">
+            ${report.suggestions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+          </ol>
+        </div>
+        <div class="block">
+          <h4>可替换文案</h4>
+          ${report.snippets.map((item) => `<div class="snippet">${escapeHtml(item)}</div>`).join("")}
+        </div>
+      `;
+    }
+
+    function renderInterview(report) {
+      els.interviewPanel.innerHTML = `
+        <div class="block">
+          <h4>面试题清单</h4>
+          <ol class="list">
+            ${report.questions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+          </ol>
+        </div>
+      `;
+    }
+
+    function getHistory() {
+      try {
+        return JSON.parse(localStorage.getItem(historyKey) || "[]");
+      } catch (err) {
+        return [];
+      }
+    }
+
+    function saveHistory(report) {
+      const compactReport = {
+        id: report.id,
+        createdAt: report.createdAt,
+        candidateName: report.candidateName,
+        targetRole: report.targetRole,
+        score: report.score,
+        coverage: report.coverage,
+        resumeText: report.resumeText,
+        jdText: report.jdText
+      };
+      const next = [compactReport, ...getHistory().filter((item) => item.id !== report.id)].slice(0, 8);
+      localStorage.setItem(historyKey, JSON.stringify(next));
+    }
+
+    function renderHistory() {
+      const history = getHistory();
+      if (!history.length) {
+        els.historyPanel.innerHTML = '<div class="empty">暂无历史记录。</div>';
+        return;
+      }
+      els.historyPanel.innerHTML = `
+        <div class="history-list">
+          ${history.map((item) => `
+            <div class="history-item">
+              <div>
+                <strong>${escapeHtml(item.targetRole || "未命名岗位")} · ${item.score} 分</strong>
+                <span>${escapeHtml(item.createdAt)} · 覆盖率 ${pct(item.coverage)}% · ${escapeHtml(item.candidateName || "未填写姓名")}</span>
+              </div>
+              <button class="btn" type="button" data-load-history="${item.id}">载入</button>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function saveDraft() {
+      localStorage.setItem(storageKey, JSON.stringify(getFormData()));
+    }
+
+    function restoreDraft() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        els.candidateName.value = saved.candidateName || "";
+        els.targetRole.value = saved.targetRole || "";
+        els.resumeText.value = saved.resumeText || "";
+        els.jdText.value = saved.jdText || "";
+      } catch (err) {
+        localStorage.removeItem(storageKey);
+      }
+    }
+
+    function exportReport() {
+      if (!currentReport) {
+        analyze();
+      }
+      if (!currentReport) {
+        return;
+      }
+
+      const report = currentReport;
+      const content = [
+        "AI 简历岗位匹配 Agent 报告",
+        `生成时间：${report.createdAt}`,
+        `姓名：${report.candidateName || "未填写"}`,
+        `目标岗位：${report.targetRole || "未填写"}`,
+        `匹配度：${report.score}`,
+        `关键词覆盖率：${pct(report.coverage)}%`,
+        "",
+        "已覆盖关键词：",
+        report.covered.map((item) => item.term).join("、") || "暂无",
+        "",
+        "待补关键词：",
+        report.missing.map((item) => item.term).join("、") || "暂无",
+        "",
+        "优化建议：",
+        ...report.suggestions.map((item, index) => `${index + 1}. ${item}`),
+        "",
+        "可替换文案：",
+        ...report.snippets.map((item, index) => `${index + 1}. ${item}`),
+        "",
+        "面试准备：",
+        ...report.questions.map((item, index) => `${index + 1}. ${item}`)
+      ].join("\n");
+
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `resume-agent-report-${Date.now()}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function fillSample() {
+      els.candidateName.value = "张同学";
+      els.targetRole.value = "前端开发实习生";
+      els.resumeText.value = `教育经历：计算机科学与技术，本科在读。
+
+技能：熟悉 HTML、CSS、JavaScript、Vue、React、Git，了解 Node.js、MySQL、ECharts。
+
+项目经历：校园二手交易平台
+负责商品发布、搜索筛选、用户中心等前端模块，使用 Vue 和组件化方式搭建页面；与后端完成 REST 接口联调，定位并修复 12 个交互问题。通过图片懒加载和列表分页优化，首页加载时间减少 35%，支持 1,000+ 条商品数据展示。
+
+项目经历：学习数据看板
+使用 ECharts 完成学习时长、错题类型、周进度等可视化图表，支持按课程和时间筛选。负责需求分析、页面开发和测试，最终交付给 40 名同学试用。`;
+      els.jdText.value = `岗位职责：
+1. 参与 Web 前端页面开发，负责业务模块的设计、开发和维护。
+2. 与产品、后端协作完成需求评审、接口联调和上线交付。
+3. 参与前端性能优化、组件沉淀和代码规范建设。
+
+任职要求：
+1. 熟悉 HTML、CSS、JavaScript，了解 TypeScript。
+2. 熟悉 React 或 Vue，理解组件化、响应式和状态管理。
+3. 了解 REST 接口、Git、Webpack 或 Vite。
+4. 有 ECharts、可视化、性能优化、自动化测试经验者优先。
+5. 具备良好的沟通协作、问题定位和学习能力。`;
+      saveDraft();
+      analyze();
+    }
+
+    function clearAll() {
+      els.candidateName.value = "";
+      els.targetRole.value = "";
+      els.resumeText.value = "";
+      els.jdText.value = "";
+      currentReport = null;
+      localStorage.removeItem(storageKey);
+      els.statusLine.classList.remove("error");
+      els.statusLine.textContent = "已清空。";
+      els.scoreRing.style.setProperty("--score", "0%");
+      els.scoreText.textContent = "0";
+      els.scoreTitle.textContent = "还没有生成分析";
+      els.scoreDesc.textContent = "填写简历和岗位 JD 后，点击“分析匹配”。";
+      els.coverageText.textContent = "0%";
+      els.missingText.textContent = "0";
+      els.metricText.textContent = "0";
+      els.actionText.textContent = "0";
+      els.flowPanel.innerHTML = "";
+      els.keywordsPanel.innerHTML = "";
+      els.advicePanel.innerHTML = "";
+      els.interviewPanel.innerHTML = "";
+      renderHistory();
+    }
+
+    document.querySelectorAll(".tab").forEach((button) => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((tab) => tab.classList.remove("active"));
+        document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.remove("active"));
+        button.classList.add("active");
+        document.querySelector(`#${button.dataset.tab}Panel`).classList.add("active");
+      });
+    });
+
+    document.addEventListener("input", (event) => {
+      if ([els.candidateName, els.targetRole, els.resumeText, els.jdText].includes(event.target)) {
+        saveDraft();
+        els.statusLine.classList.remove("error");
+        els.statusLine.textContent = "草稿已保存在本地。";
+      }
+    });
+
+    els.analyzeBtn.addEventListener("click", analyze);
+    els.sampleBtn.addEventListener("click", fillSample);
+    els.clearBtn.addEventListener("click", clearAll);
+    els.exportBtn.addEventListener("click", exportReport);
+
+    els.historyPanel.addEventListener("click", (event) => {
+      const id = Number(event.target.dataset.loadHistory);
+      if (!id) {
+        return;
+      }
+      const item = getHistory().find((entry) => entry.id === id);
+      if (!item) {
+        return;
+      }
+      els.candidateName.value = item.candidateName || "";
+      els.targetRole.value = item.targetRole || "";
+      els.resumeText.value = item.resumeText || "";
+      els.jdText.value = item.jdText || "";
+      saveDraft();
+      analyze();
+    });
+
+    restoreDraft();
+    renderHistory();
+  </script>
+</body>
+</html>
